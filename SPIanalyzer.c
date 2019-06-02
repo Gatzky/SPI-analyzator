@@ -4,12 +4,13 @@
 #include "usart.h"
 
 //PREPROCESOR
-#define PresV 1 						//one tic = 1ms
-#define PeriodV 1
+#define PresV 16000 						//one tic = 1ms
+#define PeriodV 500
 #define GPIO_SCLK GPIO_PIN_0
 #define GPIO_MOSI GPIO_PIN_2
 #define GPIO_MISO GPIO_PIN_4
 #define GPIO_SS GPIO_PIN_6
+#define RisingMode 0						//1- rising, 0-falling
 
 //GLOBAL VARIABLE
 uint8_t prevSCLK = 2;					//2 mean first SCLK
@@ -87,11 +88,11 @@ uint8_t SPIA_SCLK_Service(){
 	}
 	else if(prevSCLK == 1 && tempSCLK == 0){			//falling edge
 		prevSCLK = tempSCLK;
-		return 1;
+		return (!RisingMode);
 	}
 	else if(prevSCLK == 0 && tempSCLK == 1){			//rising edge
 		prevSCLK = tempSCLK;
-		return 0;
+		return RisingMode;
 	}
 	return 0;
 }
@@ -99,7 +100,7 @@ uint8_t SPIA_SCLK_Service(){
 //Function to service SS value
 //return 1-this device is chosen, return 0-this device is not chosen
 uint8_t SPIA_SS_Service(){
-	uint8_t tempSS = HAL_GPIO_ReadPin(GPIOE, GPIO_SCLK);
+	uint8_t tempSS = HAL_GPIO_ReadPin(GPIOE, GPIO_SS);
 	return (!tempSS);
 }
 //
@@ -110,13 +111,15 @@ void TIM2_IRQHandler(){
 //
 //Interupt Handler Support Function
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if (SPIA_SCLK_Service()){
-		if (SPIA_SS_Service()){
-			//MOSIbuffor[count] = HAL_GPIO_ReadPin(GPIOE, GPIO_MOSI);
-			//MISObuffor[count] = HAL_GPIO_ReadPin(GPIOE, GPIO_MISO);
-			//count++;
+	if (SPIA_SS_Service()){
+		if (SPIA_SCLK_Service()){
+			MOSIbuffor[count] = HAL_GPIO_ReadPin(GPIOE, GPIO_MOSI);
+			MISObuffor[count] = HAL_GPIO_ReadPin(GPIOE, GPIO_MISO);
+			count++;
 			HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, GPIO_PIN_SET);
 		}
+		else
+			HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, GPIO_PIN_RESET);
 	}
 	if(count == 100){
 		mode = 2;
@@ -126,14 +129,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 //Function to sending data by uart
 void SPIA_SendData(){
 	char elem[2];
-	for (int i=0; i<100; i++){
+	/*for (int i=0; i<100; i++){
 		sprintf(elem,"%d",MOSIbuffor[i]);
 		USART_POLL_WriteString(elem);
 	}
 	for (int i=0; i<100; i++){
 		sprintf(elem,"%d",MISObuffor[i]);
 		USART_POLL_WriteString(elem);
-	}
+	}*/
 }
 //
 //Main function of library
@@ -141,14 +144,15 @@ void SPIA_function(){
 	//Configuration
 	//while(mode==0){
 	//}
+	
 	//Collecting data
-	while(1){
-		HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(TIM2_IRQn);
-	}
+	HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(TIM2_IRQn);
+	while(mode!=2);
+	
 	//Sending data
+	HAL_NVIC_DisableIRQ(TIM2_IRQn);
 	while(mode==2){
-		HAL_NVIC_DisableIRQ(TIM2_IRQn);
 		SPIA_SendData();
 	}
 }

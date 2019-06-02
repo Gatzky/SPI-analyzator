@@ -43,8 +43,10 @@ int main(void){
 	InitializeLED();
 	SPIA_Initialize();
 	
-	HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(TIM2_IRQn);
+	//HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+  //HAL_NVIC_EnableIRQ(TIM2_IRQn);
+	
+	SPIA_function();
 	
 	while(1);
 }
