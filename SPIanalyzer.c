@@ -4,8 +4,8 @@
 #include "usart.h"
 
 //PREPROCESOR
-#define PresV 16000 						//one tic = 1ms
-#define PeriodV 500
+#define PresV 90 						//one tic = 1ms
+#define PeriodV 1
 #define GPIO_SCLK GPIO_PIN_0
 #define GPIO_MOSI GPIO_PIN_2
 #define GPIO_MISO GPIO_PIN_4
@@ -14,10 +14,10 @@
 
 //GLOBAL VARIABLE
 uint8_t prevSCLK = 2;					//2 mean first SCLK
-uint8_t MOSIbuffor[100];
-uint8_t MISObuffor[100];
+uint16_t MOSIbuffor[100];
+uint16_t MISObuffor[100];
 uint8_t count;
-uint8_t mode=1;
+uint8_t mode=0;
 static TIM_HandleTypeDef s_TimerInstance = { 
 	.Instance = TIM2
 };
@@ -116,27 +116,30 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 			MOSIbuffor[count] = HAL_GPIO_ReadPin(GPIOE, GPIO_MOSI);
 			MISObuffor[count] = HAL_GPIO_ReadPin(GPIOE, GPIO_MISO);
 			count++;
-			HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, GPIO_PIN_SET);
+			//HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, GPIO_PIN_SET);
 		}
-		else
-			HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, GPIO_PIN_RESET);
+		//else
+			//count++;
+			//HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, GPIO_PIN_RESET);
 	}
 	if(count == 100){
-		mode = 2;
+		mode = 1;
 	}
 }
 //
 //Function to sending data by uart
 void SPIA_SendData(){
 	char elem[2];
-	/*for (int i=0; i<100; i++){
+	USART_POLL_WriteString("\nMOSI\n");
+	for (int i=0; i<100; i++){
 		sprintf(elem,"%d",MOSIbuffor[i]);
 		USART_POLL_WriteString(elem);
 	}
+	USART_POLL_WriteString("\nMISO\n");
 	for (int i=0; i<100; i++){
 		sprintf(elem,"%d",MISObuffor[i]);
 		USART_POLL_WriteString(elem);
-	}*/
+	}
 }
 //
 //Main function of library
@@ -148,11 +151,12 @@ void SPIA_function(){
 	//Collecting data
 	HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(TIM2_IRQn);
-	while(mode!=2);
+	while(!mode);
 	
 	//Sending data
 	HAL_NVIC_DisableIRQ(TIM2_IRQn);
-	while(mode==2){
-		SPIA_SendData();
-	}
+	HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_SET);
+	SPIA_SendData();		
+	HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET);
+	mode = 0;
 }

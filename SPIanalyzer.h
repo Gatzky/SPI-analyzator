@@ -6,4 +6,6 @@ void SPIA_Initialize(void);
 //main function of library
 void SPIA_function(void);
 
+void SPIA_SendData(void);
+
 #endif //SPIanalyzer_H_
